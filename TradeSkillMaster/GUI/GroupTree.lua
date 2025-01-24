@@ -282,7 +282,7 @@ function TSMAPI:CreateGroupTree(parent, module, label, isGroupBox)
 	st.contentFrame = contentFrame
 
 	if not isGroupBox then
-		local btn = TSMAPI.GUI:CreateButton(st, 14)
+		local btn = TSMAPI.GUI:CreateButton(st, 14, (module or "nomodule") .. "SelectAllGroups")
 		btn:SetPoint("BOTTOMLEFT", 0, 2)
 		btn:SetPoint("BOTTOMRIGHT", st, "BOTTOM", -2, 2)
 		btn:SetHeight(16)
@@ -290,7 +290,7 @@ function TSMAPI:CreateGroupTree(parent, module, label, isGroupBox)
 		btn:SetScript("OnClick", SelectAll)
 		btn.st = st
 
-		local btn = TSMAPI.GUI:CreateButton(st, 14)
+		local btn = TSMAPI.GUI:CreateButton(st, 14, (module or "nomodule") .. "DeselectAllGroups")
 		btn:SetPoint("BOTTOMLEFT", st, "BOTTOM", 2, 2)
 		btn:SetPoint("BOTTOMRIGHT", 0, 2)
 		btn:SetHeight(16)

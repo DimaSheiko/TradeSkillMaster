@@ -15,6 +15,9 @@ local totalToCancel, totalCanceled, count = 0, 0, 0
 local isScanning, GUI, isCancelAll, specialOptions
 local itemsCancelled, itemsMissed = {}, {}
 
+if (not TSMCancel) then TSMCancel = {} end
+if (not TSMCancel.currentItem) then TSMCancel.currentItem = {} end
+if (not TSMCancel.tempIndexList) then TSMCancel.tempIndexList = {} end
 
 function Cancel:ValidateOperation(itemString, operation)
 	local _, itemLink = TSMAPI:GetSafeItemInfo(itemString)
@@ -70,13 +73,14 @@ function Cancel:GetScanListAndSetup(GUIRef, options)
 	isCancelAll = options.specialMode
 	wipe(cancelQueue)
 	wipe(currentItem)
+	wipe(TSMCancel.currentItem)
 	wipe(itemsCancelled)
 	wipe(itemsMissed)
 	wipe(TSM.operationLookup)
 	totalToCancel, totalCanceled, count = 0, 0, 0
-	
+
 	local tempList, scanList, groupTemp = {}, {}, {}
-	
+
 	specialOptions = specialOptions or {}
 	wipe(specialOptions)
 	if type(options.specialMode) == "string" then
@@ -88,7 +92,7 @@ function Cancel:GetScanListAndSetup(GUIRef, options)
 			isCancelAll = "price"
 		end
 	end
-	
+
 	for i=GetNumAuctionItems("owner"), 1, -1 do
 		-- ignore sold auctions
 		if select(13, GetAuctionItemInfo("owner", i)) == 0 then
@@ -137,7 +141,7 @@ function Cancel:GetScanListAndSetup(GUIRef, options)
 			end
 		end
 	end
-	
+
 	if options.specialMode then
 		for itemString in pairs(tempList) do
 			tinsert(scanList, itemString)
@@ -161,7 +165,7 @@ function Cancel:GetScanListAndSetup(GUIRef, options)
 		end
 		TSMAPI:FireEvent("AUCTIONING:CANCEL:START", {num=#scanList})
 	end
-	
+
 	return scanList
 end
 
@@ -188,7 +192,7 @@ function Cancel:ProcessItem(itemString, noLog)
 				end
 			end
 		end
-		
+
 		local numKept = 0
 		sort(cancelAuctions, function(a, b) return a.buyout < b.buyout end) --keepPosted
 		for i=#cancelAuctions, 1, -1 do
@@ -206,7 +210,7 @@ function Cancel:ProcessItem(itemString, noLog)
 		if totalToCancel > 0 then
 			TSM.Manage:UpdateStatus("manage", totalCanceled, totalToCancel)
 		end
-		
+
 		if not noLog then
 			if toCancel then
 				TSM.Log:AddLogRecord(itemString, "cancel", "Cancel", reasonToCancel, operation, buyout)
@@ -214,7 +218,7 @@ function Cancel:ProcessItem(itemString, noLog)
 				TSM.Log:AddLogRecord(itemString, "cancel", "Skip", reasonNotToCancel, operation, buyout)
 			end
 		end
-		
+
 		if #cancelQueue > 0 and not currentItem.buyout then
 			Cancel:SetupForAction()
 		end
@@ -250,7 +254,7 @@ function Cancel:SpecialScanProcessItem(itemString, noLog)
 			end
 		end
 	end
-	
+
 	local numKept = 0
 	sort(cancelAuctions, function(a, b) return a.buyout < b.buyout end) --keepPosted
 	for i=#cancelAuctions, 1, -1 do
@@ -263,7 +267,7 @@ function Cancel:SpecialScanProcessItem(itemString, noLog)
 	if totalToCancel > 0 then
 		TSM.Manage:UpdateStatus("manage", totalCanceled, totalToCancel)
 	end
-	
+
 	if not noLog then
 		if toCancel then
 			TSM.Log:AddLogRecord(itemString, "cancel", "Cancel", reasonToCancel)
@@ -271,7 +275,7 @@ function Cancel:SpecialScanProcessItem(itemString, noLog)
 			TSM.Log:AddLogRecord(itemString, "cancel", "Skip", reasonNotToCancel)
 		end
 	end
-	
+
 	if #cancelQueue > 0 and not currentItem.buyout then
 		Cancel:SetupForAction()
 	end
@@ -282,14 +286,14 @@ function Cancel:ShouldCancel(index, operation)
 	local buyoutPerItem = floor(buyout / quantity)
 	local bidPerItem = floor(bid / quantity)
 	if operation.matchStackSize and quantity ~= operation.stackSize then return end
-	
+
 	local itemString = TSMAPI:GetBaseItemString(GetAuctionItemLink("owner", index), true)
 	local cancelData = {itemString=itemString, stackSize=quantity, buyout=buyout, bid=bid, index=index, numStacks=1, operation=operation}
-	
+
 	local auctionItem = TSM.Scan.auctionData[itemString]
 	local lowestBuyout, lowestBid, lowestOwner, isWhitelist, isPlayer, isInvalidSeller = TSM.Scan:GetLowestAuction(itemString, operation)
 	local secondLowest = TSM.Scan:GetSecondLowest(itemString, lowestBuyout, operation) or 0
-	
+
 	if wasSold == 1 or not lowestOwner then
 		-- if this auction was sold or we don't have any data on it then this request is invalid
 		return
@@ -301,12 +305,12 @@ function Cancel:ShouldCancel(index, operation)
 		end
 		return false, "invalidSeller"
 	end
-	
+
 	if not TSM.db.global.cancelWithBid and activeBid > 0 then
 		-- Don't cancel an auction if it has a bid and we're set to not cancel those
 		return false, "bid"
 	end
-	
+
 	local prices = TSM.Util:GetItemPrices(operation, itemString)
 	if buyoutPerItem < prices.minPrice then
 		-- this auction is below min price
@@ -360,7 +364,7 @@ function Cancel:ShouldCancel(index, operation)
 			return cancelData, "whitelistUndercut"
 		end
 	end
-	
+
 	error("unexpectedly reached end", buyoutPerItem, lowestBuyout, isWhitelist, isPlayer, prices.minPrice)
 end
 
@@ -370,8 +374,11 @@ function Cancel:SetupForAction()
 	Cancel:RegisterEvent("UI_ERROR_MESSAGE")
 	TSM.Manage:UpdateStatus("manage", totalCanceled, totalToCancel)
 	wipe(currentItem)
+	wipe(TSMCancel.currentItem)
 	currentItem = cancelQueue[1]
+	TSMCancel.currentItem = cancelQueue[1]
 	TSM.Manage:SetCurrentItem(currentItem)
+	TSM.Manage:SetCurrentItem(TSMCancel.currentItem)
 	GUI.buttons:Enable()
 end
 
@@ -420,14 +427,17 @@ function Cancel:UpdateItem()
 		end
 		return
 	end
-	
+
 	sort(cancelQueue, function(a, b) return (a.index or 0)>(b.index or 0) end)
 
 	totalCanceled = totalCanceled + 1
 	TSM.Manage:UpdateStatus("manage", totalCanceled, totalToCancel)
 	wipe(currentItem)
+	wipe(TSMCancel.currentItem)
 	currentItem = cancelQueue[1]
+	TSMCancel.currentItem = cancelQueue[1]
 	TSM.Manage:SetCurrentItem(currentItem)
+	TSM.Manage:SetCurrentItem(TSMCancel.currentItem)
 	GUI.buttons:Enable()
 end
 
@@ -438,7 +448,7 @@ function Cancel:DoAction()
 	if cancelQueue[1].itemString ~= currentItem.itemString then
 		Cancel:UpdateItem()
 	end
-	
+
 	-- figure out which index the item goes to
 	for i=GetNumAuctionItems("owner"), 1, -1 do
 		local _, _, quantity, _, _, _, bid, _, buyout, activeBid = GetAuctionItemInfo("owner", i)
@@ -446,6 +456,7 @@ function Cancel:DoAction()
 		if itemString == currentItem.itemString and abs((buyout or 0) - (currentItem.buyout or 0)) < quantity and abs((bid or 0) - (currentItem.bid or 0)) < quantity and (not TSM.db.global.cancelWithBid and activeBid == 0 or TSM.db.global.cancelWithBid) then
 			if not tempIndexList[itemString..buyout..bid..i] then
 				tempIndexList[itemString..buyout..bid..i] = true
+				TSMCancel.tempIndexList[itemString..buyout..bid..i] = true
 				index = i
 				break
 			else
@@ -453,14 +464,14 @@ function Cancel:DoAction()
 			end
 		end
 	end
-	
+
 	-- if we found an index then cancel the item
 	if index then
 		CancelAuction(index)
 	elseif backupIndex then
 		CancelAuction(backupIndex)
 	end
-	
+
 	-- disable the button and move onto the next item
 	GUI.buttons:Disable()
 	tinsert(itemsCancelled, CopyTable(cancelQueue[1]))
@@ -485,9 +496,10 @@ function Cancel:Stop(interrupted)
 		TSMAPI:CancelFrame("cancelDelayFrame")
 		TSMAPI:CancelFrame("updateCancelStatus")
 		GUI:Stopped()
-	
+
 		Cancel:UnregisterAllEvents()
 		wipe(currentItem)
+		wipe(TSMCancel.currentItem)
 		totalToCancel, totalCanceled = 0, 0
 		isScanning = false
 	else -- got an "item not found" so requeue ones that we missed

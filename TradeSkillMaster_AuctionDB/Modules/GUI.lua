@@ -10,14 +10,14 @@
 local TSM = select(2, ...)
 local GUI = TSM:NewModule("GUI")
 local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_AuctionDB") -- loads the localization table
-	
+
 local private = {}
 
 function GUI:Show(frame)
 	private.statusBar = private.statusBar or private:CreateStatusBar(frame.content)
 	private.statusBar:Show()
 	GUI:UpdateStatus("", 0, 0)
-	
+
 	private.startScanContent = private.startScanContent or private:CreateStartScanContent(frame)
 	private.startScanContent:Show()
 end
@@ -25,7 +25,7 @@ end
 function GUI:Hide()
 	private.statusBar:Hide()
 	private.startScanContent:Hide()
-	
+
 	TSM.Scan:DoneScanning()
 	TSMAPI.AuctionScan:StopScan()
 end
@@ -42,7 +42,7 @@ end
 function private:CreateStatusBar(parent)
 	local frame = TSMAPI.GUI:CreateStatusBar(parent, "TSMAuctionDBStatusBar")
 	TSMAPI.GUI:CreateHorizontalLine(frame, -30, parent)
-	
+
 	return frame
 end
 

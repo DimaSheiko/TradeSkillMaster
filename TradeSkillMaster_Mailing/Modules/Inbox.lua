@@ -20,7 +20,7 @@ function Inbox:OnEnable()
 end
 
 function Inbox:CreateTab(parent)
-	local frame = CreateFrame("Frame", nil, parent)
+	local frame = CreateFrame("Frame", "TSMMailBoxFrame", parent)
 	frame:Hide()
 	frame:SetAllPoints()
 	frame:SetScript("OnHide", function() private:StopAutoLooting() end)
@@ -74,7 +74,7 @@ function Inbox:CreateTab(parent)
 	st:SetData({})
 	frame.st = st
 
-	local btn = TSMAPI.GUI:CreateButton(frame, 18)
+	local btn = TSMAPI.GUI:CreateButton(frame, 18, "TSMMailboxOpenAll")
 	btn:SetPoint("BOTTOMLEFT", 5, 30)
 	btn:SetPoint("BOTTOMRIGHT", -5, 30)
 	btn:SetHeight(20)
@@ -262,10 +262,10 @@ function private:InboxUpdate()
 		local _, _, sender, subject, money, cod, daysLeft, hasItem, _, _, _, _, _, itemQuantity = GetInboxHeaderInfo(i)
 		if isInvoice then
 			local invoiceType, itemName, playerName, bid, buyout, deposit, ahcut, _, _, _, quantity = GetInboxInvoiceInfo(i)
-			
+
 			-- fix MoP difference
 			if (quantity == nil) then quantity = itemQuantity end
-			
+
 			if invoiceType == "buyer" then
 				local itemLink = GetInboxItemLink(i, 1) or itemName
 				mailInfo[i] = format(L["Buy: %s (%d) | %s | %s"], itemLink, quantity or 0, TSMAPI:FormatTextMoney(bid, redColor), FormatDaysLeft(daysLeft, i))
@@ -499,7 +499,7 @@ function private:LootMailItem(index)
 			local redColor = "|cffFF0000"
 			local greenColor = "|cff00FF00"
 			local yellowColor = "|cffFFFF00"
-			
+
 			if invoiceType == "buyer" then
 				local itemLink = GetInboxItemLink(index, 1) or itemName
 				TSM:Printf(L["Collected purchase of %s (%d) for %s."], itemLink, quantity, TSMAPI:FormatTextMoney(bid, redColor))
@@ -682,6 +682,8 @@ function private:GetBagSlots()
 	end
 	return genericSpace, uniqueSpace, partSlots
 end
+
+TSMAPI.GetBagSlots = private.GetBagSlots
 
 function Inbox:UI_ERROR_MESSAGE(event, msg)
 	if msg == ERR_MAIL_DATABASE_ERROR then
