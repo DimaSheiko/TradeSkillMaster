@@ -10,23 +10,24 @@
 
 -- register this file with Ace libraries
 local TSM = select(2, ...)
+_G.TSM = TSM
 TSM = LibStub("AceAddon-3.0"):NewAddon(TSM, "TradeSkillMaster", "AceEvent-3.0", "AceConsole-3.0", "AceHook-3.0")
 TSM.moduleObjects = {}
 TSM.moduleNames = {}
 
 local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster") -- loads the localization table
-TSM._version = GetAddOnMetadata("TradeSkillMaster", "Version") -- current version of the addon
-local LSM = LibStub("LibSharedMedia-3.0")  -- load the SharedMedia library
+TSM._version = GetAddOnMetadata("TradeSkillMaster", "Version")   -- current version of the addon
+local LSM = LibStub("LibSharedMedia-3.0")                        -- load the SharedMedia library
 
 TSMAPI = {}
 
 -- We must register all custom fonts we want here, since we're loaded before the other TSM modules.
-local LSM_Fonts = LSM:HashTable("font")  -- Persistent hashtable of all registered LSM fonts.
+local LSM_Fonts = LSM:HashTable("font") -- Persistent hashtable of all registered LSM fonts.
 if not LSM_Fonts["Arial Narrow"] then
 	-- LSM only registers it for western locales, so enforce its registration for all locales.
 	LSM:Register("font", "Arial Narrow", [[Fonts\ARIALN.TTF]])
 end
-LSM:Register("font", "TSM Droid Sans Bold", [[Interface\Addons\TradeSkillMaster\Media\DroidSans-Bold.ttf]])  -- Our own custom font.
+LSM:Register("font", "TSM Droid Sans Bold", [[Interface\Addons\TradeSkillMaster\Media\DroidSans-Bold.ttf]]) -- Our own custom font.
 
 -- Default TSM design settings.
 TSM.designDefaults = {
@@ -126,15 +127,15 @@ local savedDBDefaults = {
 		characters = {},
 		syncAccounts = {},
 		numPagesCache = {},
-		bankUIBankFramePosition = {100, 300},
-		bankUIGBankFramePosition = {100, 300},
+		bankUIBankFramePosition = { 100, 300 },
+		bankUIGBankFramePosition = { 100, 300 },
 	},
 }
 
 -- Called once the player has loaded WOW.
 function TSM:OnInitialize()
 	TSMAPI:RegisterForTracing(TSMAPI, "TSMAPI")
-	
+
 	TSM.moduleObjects = nil
 	TSM.moduleNames = nil
 
@@ -149,7 +150,7 @@ function TSM:OnInitialize()
 	else
 		TSM.operations = TSM.db.profile.operations
 	end
-	
+
 	-- Prepare the TradeSkillMasterAppDB database
 	-- We're not using AceDB here on purpose due to bugs in AceDB, but are emulating the parts of it that we need.
 
@@ -243,7 +244,7 @@ function TSM:OnInitialize()
 			TSM.db.profile.items[itemString] = nil
 		end
 	end
-	
+
 	if TSM.db.profile.deValueSource then
 		TSM.db.profile.destroyValueSource = TSM.db.profile.deValueSource
 		TSM.db.profile.deValueSource = nil
@@ -253,48 +254,65 @@ end
 
 function TSM:RegisterModule()
 	TSM.icons = {
-		{ side = "options", desc = L["TSM Status / Options"], callback = "LoadOptions", icon = "Interface\\Icons\\Achievement_Quests_Completed_04" },
-		{ side = "options", desc = L["Groups"], callback = "LoadGroupOptions", slashCommand = "groups", icon = "Interface\\Icons\\INV_DataCrystal08" },
-		{ side = "options", desc = L["Module Operations / Options"], slashCommand = "operations", callback = "LoadOperationOptions", icon = "Interface\\Icons\\INV_Gizmo_Felironbolts" },
-		{ side = "options", desc = L["Tooltip Options"], slashCommand = "tooltips", callback = "LoadTooltipOptions", icon = "Interface\\Icons\\INV_Misc_Gear_01" },
+		{ side = "options", desc = L["TSM Status / Options"],        callback = "LoadOptions",      icon = "Interface\\Icons\\Achievement_Quests_Completed_04" },
+		{ side = "options", desc = L["Groups"],                      callback = "LoadGroupOptions", slashCommand = "groups",                                   icon = "Interface\\Icons\\INV_DataCrystal08" },
+		{ side = "options", desc = L["Module Operations / Options"], slashCommand = "operations",   callback = "LoadOperationOptions",                         icon = "Interface\\Icons\\INV_Gizmo_Felironbolts" },
+		{ side = "options", desc = L["Tooltip Options"],             slashCommand = "tooltips",     callback = "LoadTooltipOptions",                           icon = "Interface\\Icons\\INV_Misc_Gear_01" },
 	}
 
 	TSM.priceSources = {}
-	
+
 	-- Auctioneer
 	if select(4, GetAddOnInfo("Auc-Advanced")) == 1 and AucAdvanced then
 		if AucAdvanced.Modules.Util.Appraiser and AucAdvanced.Modules.Util.Appraiser.GetPrice then
-			tinsert(TSM.priceSources, { key = "AucAppraiser", label = L["Auctioneer - Appraiser"], callback = AucAdvanced.Modules.Util.Appraiser.GetPrice })
+			tinsert(TSM.priceSources,
+				{ key = "AucAppraiser", label = L["Auctioneer - Appraiser"], callback = AucAdvanced.Modules.Util
+				.Appraiser.GetPrice })
 		end
 		if AucAdvanced.Modules.Util.SimpleAuction and AucAdvanced.Modules.Util.SimpleAuction.Private.GetItems then
-			tinsert(TSM.priceSources, { key = "AucMinBuyout", label = L["Auctioneer - Minimum Buyout"], callback = function(itemLink) return select(6, AucAdvanced.Modules.Util.SimpleAuction.Private.GetItems(itemLink)) end })
+			tinsert(TSM.priceSources,
+				{ key = "AucMinBuyout", label = L["Auctioneer - Minimum Buyout"], callback = function(itemLink) return
+					select(6, AucAdvanced.Modules.Util.SimpleAuction.Private.GetItems(itemLink)) end })
 		end
 		if AucAdvanced.API.GetMarketValue then
-			tinsert(TSM.priceSources, { key = "AucMarket", label = L["Auctioneer - Market Value"], callback = AucAdvanced.API.GetMarketValue })
+			tinsert(TSM.priceSources,
+				{ key = "AucMarket", label = L["Auctioneer - Market Value"], callback = AucAdvanced.API.GetMarketValue })
 		end
 	end
-	
+
 	-- Auctionator
 	if select(4, GetAddOnInfo("Auctionator")) == 1 and Atr_GetAuctionBuyout then
-		tinsert(TSM.priceSources, { key = "AtrValue", label = L["Auctionator - Auction Value"], callback = Atr_GetAuctionBuyout })
+		tinsert(TSM.priceSources,
+			{ key = "AtrValue", label = L["Auctionator - Auction Value"], callback = Atr_GetAuctionBuyout })
 	end
 	-- Vendor Buy Price
-	tinsert(TSM.priceSources, { key = "VendorBuy", label = L["Buy from Vendor"], callback = function(itemLink) return TSMAPI:GetVendorCost(TSMAPI:GetItemString(itemLink)) end })
+	tinsert(TSM.priceSources,
+		{ key = "VendorBuy", label = L["Buy from Vendor"], callback = function(itemLink) return TSMAPI:GetVendorCost(
+			TSMAPI:GetItemString(itemLink)) end })
 
 	-- Vendor Buy Price
-	tinsert(TSM.priceSources, { key = "VendorSell", label = L["Sell to Vendor"], callback = function(itemLink) local sell = select(11, GetItemInfo(itemLink)) return (sell or 0) > 0 and sell or nil end })
+	tinsert(TSM.priceSources,
+		{ key = "VendorSell", label = L["Sell to Vendor"], callback = function(itemLink)
+			local sell = select(11, GetItemInfo(itemLink))
+			return (sell or 0) > 0 and sell or nil
+		end })
 
 	-- Disenchant Value
 	tinsert(TSM.priceSources, { key = "Disenchant", label = L["Disenchant Value"], callback = "GetDisenchantValue" })
 
 
 	TSM.slashCommands = {
-		{ key = "version", label = L["Prints out the version numbers of all installed modules"], callback = function() TSM:Print(L["TSM Version Info:"]) local chatFrame = TSMAPI:GetChatFrame() for _, module in ipairs(TSM.Modules:GetInfo()) do chatFrame:AddMessage(module.name.." |cff99ffff"..module.version.."|r") end end },
-		{ key = "freset", label = L["Resets the position, scale, and size of all applicable TSM and module frames."], callback = "ResetFrames" },
-		{ key = "bankui", label = L["Toggles the bankui"], callback = "toggleBankUI" },
-		{ key = "sources", label = L["Prints out the available price sources for use in custom price boxes."], callback = "PrintPriceSources" },
-		{ key = "price", label = L["Allows for testing of custom prices."], callback = "TestPriceSource" },
-		{ key = "assist", label = L["Opens the TradeSkillMaster Assistant window."], callback = "Assistant:Open" },
+		{ key = "version", label = L["Prints out the version numbers of all installed modules"],                       callback = function()
+			TSM:Print(L["TSM Version Info:"])
+			local chatFrame = TSMAPI:GetChatFrame()
+			for _, module in ipairs(TSM.Modules:GetInfo()) do chatFrame:AddMessage(module.name ..
+				" |cff99ffff" .. module.version .. "|r") end
+		end },
+		{ key = "freset",  label = L["Resets the position, scale, and size of all applicable TSM and module frames."], callback = "ResetFrames" },
+		{ key = "bankui",  label = L["Toggles the bankui"],                                                            callback = "toggleBankUI" },
+		{ key = "sources", label = L["Prints out the available price sources for use in custom price boxes."],         callback = "PrintPriceSources" },
+		{ key = "price",   label = L["Allows for testing of custom prices."],                                          callback = "TestPriceSource" },
+		{ key = "assist",  label = L["Opens the TradeSkillMaster Assistant window."],                                  callback = "Assistant:Open" },
 	}
 
 	TSM.moduleAPIs = {
@@ -352,7 +370,6 @@ function TSM:OnTSMDBShutdown()
 	end
 end
 
-
 function TSMAPI:GetTSMProfileIterator()
 	local originalProfile = TSM.db:GetCurrentProfile()
 	local profiles = CopyTable(TSM.db:GetProfiles())
@@ -389,7 +406,8 @@ function TSM:GetTooltip(itemString, quantity)
 			if not base then
 				tinsert(text, { left = "  " .. L["Group:"], right = "|cffffffff" .. TSMAPI:FormatGroupPath(path) })
 			else
-				tinsert(text, { left = "  " .. L["Group(Base Item):"], right = "|cffffffff" .. TSMAPI:FormatGroupPath(path) })
+				tinsert(text,
+					{ left = "  " .. L["Group(Base Item):"], right = "|cffffffff" .. TSMAPI:FormatGroupPath(path) })
 			end
 			local modules = {}
 			for module, operations in pairs(TSM.db.profile.groups[path]) do
@@ -399,7 +417,9 @@ function TSM:GetTooltip(itemString, quantity)
 			end
 			sort(modules, function(a, b) return a.module < b.module end)
 			for _, info in ipairs(modules) do
-				tinsert(text, { left = "  " .. format(L["%s operation(s):"], info.module), right = "|cffffffff" .. info.operations .. "|r" })
+				tinsert(text,
+					{ left = "  " .. format(L["%s operation(s):"], info.module), right = "|cffffffff" ..
+					info.operations .. "|r" })
 			end
 		end
 	end
@@ -412,18 +432,26 @@ function TSM:GetTooltip(itemString, quantity)
 		if deValue > 0 then
 			if moneyCoinsTooltip then
 				if IsShiftKeyDown() then
-					tinsert(text, { left = "  " .. format(L["Disenchant Value x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(deValue * quantity, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. format(L["Disenchant Value x%s:"], quantity), right = TSMAPI
+						:FormatTextMoneyIcon(deValue * quantity, "|cffffffff", true) })
 				else
-					tinsert(text, { left = "  " .. L["Disenchant Value:"], right = TSMAPI:FormatTextMoneyIcon(deValue, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. L["Disenchant Value:"], right = TSMAPI:FormatTextMoneyIcon(deValue, "|cffffffff",
+							true) })
 				end
 			else
 				if IsShiftKeyDown() then
-					tinsert(text, { left = "  " .. format(L["Disenchant Value x%s:"], quantity), right = TSMAPI:FormatTextMoney(deValue * quantity, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. format(L["Disenchant Value x%s:"], quantity), right = TSMAPI:FormatTextMoney(
+						deValue * quantity, "|cffffffff", true) })
 				else
-					tinsert(text, { left = "  " .. L["Disenchant Value:"], right = TSMAPI:FormatTextMoney(deValue, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. L["Disenchant Value:"], right = TSMAPI:FormatTextMoney(deValue, "|cffffffff",
+							true) })
 				end
 			end
-			
+
 			if TSM.db.profile.detailedDestroyTooltip then
 				local _, itemLink, quality, ilvl, _, iType = TSMAPI:GetSafeItemInfo(itemString)
 				local itemString = TSMAPI:GetItemString(itemLink)
@@ -439,12 +467,17 @@ function TSM:GetTooltip(itemString, quantity)
 									local name, _, matQuality = TSMAPI:GetSafeItemInfo(item)
 									if matQuality then
 										-- local colorName = format("|c%s%s%s%s|r",select(4,GetItemQualityColor(matQuality)),name, " x ", deData.amountOfMats)
-										local colorName = format("%s%s%s%s|r",select(4,GetItemQualityColor(matQuality)),name, " x ", deData.amountOfMats)
+										local colorName = format("%s%s%s%s|r", select(4, GetItemQualityColor(matQuality)),
+											name, " x ", deData.amountOfMats)
 										if value > 0 then
 											if moneyCoinsTooltip then
-												tinsert(text, { left = "    " .. colorName, right = TSMAPI:FormatTextMoneyIcon(value, "|cffffffff", true) })
+												tinsert(text,
+													{ left = "    " .. colorName, right = TSMAPI:FormatTextMoneyIcon(
+													value, "|cffffffff", true) })
 											else
-												tinsert(text, { left = "    " .. colorName, right = TSMAPI:FormatTextMoney(value, "|cffffffff", true) })
+												tinsert(text,
+													{ left = "    " .. colorName, right = TSMAPI:FormatTextMoney(value,
+														"|cffffffff", true) })
 											end
 										end
 									end
@@ -456,39 +489,52 @@ function TSM:GetTooltip(itemString, quantity)
 			end
 		end
 	end
-	
+
 	-- add mill value info
 	if TSM.db.profile.millTooltip then
 		local millValue = TSM:GetMillValue(itemString)
 		if millValue > 0 then
 			if moneyCoinsTooltip then
 				if IsShiftKeyDown() then
-					tinsert(text, { left = "  " .. format(L["Mill Value x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(millValue * quantity, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. format(L["Mill Value x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(
+						millValue * quantity, "|cffffffff", true) })
 				else
-					tinsert(text, { left = "  " .. L["Mill Value:"], right = TSMAPI:FormatTextMoneyIcon(millValue, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. L["Mill Value:"], right = TSMAPI:FormatTextMoneyIcon(millValue, "|cffffffff",
+							true) })
 				end
 			else
 				if IsShiftKeyDown() then
-					tinsert(text, { left = "  " .. format(L["Mill Value x%s:"], quantity), right = TSMAPI:FormatTextMoney(millValue * quantity, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. format(L["Mill Value x%s:"], quantity), right = TSMAPI:FormatTextMoney(
+						millValue * quantity, "|cffffffff", true) })
 				else
-					tinsert(text, { left = "  " .. L["Mill Value:"], right = TSMAPI:FormatTextMoney(millValue, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. L["Mill Value:"], right = TSMAPI:FormatTextMoney(millValue, "|cffffffff", true) })
 				end
 			end
-			
+
 			if TSM.db.profile.detailedDestroyTooltip then
 				for _, targetItem in ipairs(TSMAPI:GetConversionTargetItems("mill")) do
 					local herbs = TSMAPI:GetItemConversions(targetItem)
 					if herbs[itemString] then
-						local value = (TSM:GetCustomPrice(TSM.db.profile.destroyValueSource, targetItem) or 0) * herbs[itemString].rate
+						local value = (TSM:GetCustomPrice(TSM.db.profile.destroyValueSource, targetItem) or 0) *
+						herbs[itemString].rate
 						local name, _, matQuality = TSMAPI:GetSafeItemInfo(targetItem)
 						if matQuality then
 							-- local colorName = format("|c%s%s%s%s|r",select(4,GetItemQualityColor(matQuality)),name, " x ", herbs[itemString].rate)
-							local colorName = format("%s%s%s%s|r",select(4,GetItemQualityColor(matQuality)),name, " x ", herbs[itemString].rate)
+							local colorName = format("%s%s%s%s|r", select(4, GetItemQualityColor(matQuality)), name,
+								" x ", herbs[itemString].rate)
 							if value > 0 then
 								if moneyCoinsTooltip then
-									tinsert(text, { left = "    " .. colorName, right = TSMAPI:FormatTextMoneyIcon(value, "|cffffffff", true) })
+									tinsert(text,
+										{ left = "    " .. colorName, right = TSMAPI:FormatTextMoneyIcon(value,
+											"|cffffffff", true) })
 								else
-									tinsert(text, { left = "    " .. colorName, right = TSMAPI:FormatTextMoney(value, "|cffffffff", true) })
+									tinsert(text,
+										{ left = "    " .. colorName, right = TSMAPI:FormatTextMoney(value, "|cffffffff",
+											true) })
 								end
 							end
 						end
@@ -497,39 +543,53 @@ function TSM:GetTooltip(itemString, quantity)
 			end
 		end
 	end
-	
+
 	-- add prospect value info
 	if TSM.db.profile.prospectTooltip then
 		local prospectValue = TSM:GetProspectValue(itemString)
 		if prospectValue > 0 then
 			if moneyCoinsTooltip then
 				if IsShiftKeyDown() then
-					tinsert(text, { left = "  " .. format(L["Prospect Value x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(prospectValue * quantity, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. format(L["Prospect Value x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(
+						prospectValue * quantity, "|cffffffff", true) })
 				else
-					tinsert(text, { left = "  " .. L["Prospect Value:"], right = TSMAPI:FormatTextMoneyIcon(prospectValue, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. L["Prospect Value:"], right = TSMAPI:FormatTextMoneyIcon(prospectValue,
+							"|cffffffff", true) })
 				end
 			else
 				if IsShiftKeyDown() then
-					tinsert(text, { left = "  " .. format(L["Prospect Value x%s:"], quantity), right = TSMAPI:FormatTextMoney(prospectValue * quantity, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. format(L["Prospect Value x%s:"], quantity), right = TSMAPI:FormatTextMoney(
+						prospectValue * quantity, "|cffffffff", true) })
 				else
-					tinsert(text, { left = "  " .. L["Prospect Value:"], right = TSMAPI:FormatTextMoney(prospectValue, "|cffffffff", true) })
+					tinsert(text,
+						{ left = "  " .. L["Prospect Value:"], right = TSMAPI:FormatTextMoney(prospectValue, "|cffffffff",
+							true) })
 				end
 			end
-			
+
 			if TSM.db.profile.detailedDestroyTooltip then
 				for _, targetItem in ipairs(TSMAPI:GetConversionTargetItems("prospect")) do
 					local gems = TSMAPI:GetItemConversions(targetItem)
 					if gems[itemString] then
-						local value = (TSM:GetCustomPrice(TSM.db.profile.destroyValueSource, targetItem) or 0) * gems[itemString].rate
+						local value = (TSM:GetCustomPrice(TSM.db.profile.destroyValueSource, targetItem) or 0) *
+						gems[itemString].rate
 						local name, _, matQuality = TSMAPI:GetSafeItemInfo(targetItem)
 						if matQuality then
 							-- local colorName = format("|c%s%s%s%s|r",select(4,GetItemQualityColor(matQuality)),name, " x ", gems[itemString].rate)
-							local colorName = format("%s%s%s%s|r",select(4,GetItemQualityColor(matQuality)),name, " x ", gems[itemString].rate)
+							local colorName = format("%s%s%s%s|r", select(4, GetItemQualityColor(matQuality)), name,
+								" x ", gems[itemString].rate)
 							if value > 0 then
 								if moneyCoinsTooltip then
-									tinsert(text, { left = "    " .. colorName, right = TSMAPI:FormatTextMoneyIcon(value, "|cffffffff", true) })
+									tinsert(text,
+										{ left = "    " .. colorName, right = TSMAPI:FormatTextMoneyIcon(value,
+											"|cffffffff", true) })
 								else
-									tinsert(text, { left = "    " .. colorName, right = TSMAPI:FormatTextMoney(value, "|cffffffff", true) })
+									tinsert(text,
+										{ left = "    " .. colorName, right = TSMAPI:FormatTextMoney(value, "|cffffffff",
+											true) })
 								end
 							end
 						end
@@ -546,15 +606,23 @@ function TSM:GetTooltip(itemString, quantity)
 			if quantity then
 				if moneyCoinsTooltip then
 					if IsShiftKeyDown() then
-						tinsert(text, { left = "  " .. format(L["Vendor Buy Price x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(vendorValue * quantity, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. format(L["Vendor Buy Price x%s:"], quantity), right = TSMAPI
+							:FormatTextMoneyIcon(vendorValue * quantity, "|cffffffff", true) })
 					else
-						tinsert(text, { left = "  " .. L["Vendor Buy Price:"], right = TSMAPI:FormatTextMoneyIcon(vendorValue, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. L["Vendor Buy Price:"], right = TSMAPI:FormatTextMoneyIcon(vendorValue,
+								"|cffffffff", true) })
 					end
 				else
 					if IsShiftKeyDown() then
-						tinsert(text, { left = "  " .. format(L["Vendor Buy Price x%s:"], quantity), right = TSMAPI:FormatTextMoney(vendorValue * quantity, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. format(L["Vendor Buy Price x%s:"], quantity), right = TSMAPI
+							:FormatTextMoney(vendorValue * quantity, "|cffffffff", true) })
 					else
-						tinsert(text, { left = "  " .. L["Vendor Buy Price:"], right = TSMAPI:FormatTextMoney(vendorValue, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. L["Vendor Buy Price:"], right = TSMAPI:FormatTextMoney(vendorValue,
+								"|cffffffff", true) })
 					end
 				end
 			end
@@ -568,26 +636,36 @@ function TSM:GetTooltip(itemString, quantity)
 			if quantity then
 				if moneyCoinsTooltip then
 					if IsShiftKeyDown() then
-						tinsert(text, { left = "  " .. format(L["Vendor Sell Price x%s:"], quantity), right = TSMAPI:FormatTextMoneyIcon(vendorValue * quantity, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. format(L["Vendor Sell Price x%s:"], quantity), right = TSMAPI
+							:FormatTextMoneyIcon(vendorValue * quantity, "|cffffffff", true) })
 					else
-						tinsert(text, { left = "  " .. L["Vendor Sell Price:"], right = TSMAPI:FormatTextMoneyIcon(vendorValue, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. L["Vendor Sell Price:"], right = TSMAPI:FormatTextMoneyIcon(vendorValue,
+								"|cffffffff", true) })
 					end
 				else
 					if IsShiftKeyDown() then
-						tinsert(text, { left = "  " .. format(L["Vendor Sell Price x%s:"], quantity), right = TSMAPI:FormatTextMoney(vendorValue * quantity, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. format(L["Vendor Sell Price x%s:"], quantity), right = TSMAPI
+							:FormatTextMoney(vendorValue * quantity, "|cffffffff", true) })
 					else
-						tinsert(text, { left = "  " .. L["Vendor Sell Price:"], right = TSMAPI:FormatTextMoney(vendorValue, "|cffffffff", true) })
+						tinsert(text,
+							{ left = "  " .. L["Vendor Sell Price:"], right = TSMAPI:FormatTextMoney(vendorValue,
+								"|cffffffff", true) })
 					end
 				end
 			end
 		end
 	end
-	
+
 	for name, method in pairs(TSM.db.global.customPriceSources) do
 		if TSM.db.global.customPriceTooltips[name] then
 			local price = TSM:GetCustomPrice(name, itemString)
 			if price then
-				tinsert(text, {left="  "..L["Custom Price Source"].." '"..name.."':", right=TSMAPI:FormatTextMoney(price, "|cffffffff", true)})
+				tinsert(text,
+					{ left = "  " .. L["Custom Price Source"] .. " '" .. name .. "':", right = TSMAPI:FormatTextMoney(
+					price, "|cffffffff", true) })
 			end
 		end
 	end
@@ -598,7 +676,6 @@ function TSM:GetTooltip(itemString, quantity)
 		return text
 	end
 end
-
 
 function TSM:GetDisenchantValue(link)
 	local _, itemLink, quality, ilvl, _, iType = TSMAPI:GetSafeItemInfo(link)
@@ -625,7 +702,7 @@ end
 
 function TSM:GetMillValue(itemString)
 	local value = 0
-	
+
 	for _, targetItem in ipairs(TSMAPI:GetConversionTargetItems("mill")) do
 		local herbs = TSMAPI:GetItemConversions(targetItem)
 		if herbs[itemString] then
@@ -633,13 +710,13 @@ function TSM:GetMillValue(itemString)
 			value = value + (matValue or 0) * herbs[itemString].rate
 		end
 	end
-	
+
 	return value
 end
 
 function TSM:GetProspectValue(itemString)
 	local value = 0
-	
+
 	for _, targetItem in ipairs(TSMAPI:GetConversionTargetItems("prospect")) do
 		local gems = TSMAPI:GetItemConversions(targetItem)
 		if gems[itemString] then
@@ -647,12 +724,14 @@ function TSM:GetProspectValue(itemString)
 			value = value + (matValue or 0) * gems[itemString].rate
 		end
 	end
-	
+
 	return value
 end
 
 function TSM:PrintPriceSources()
-	TSM:Printf(L["Below are your currently available price sources. The %skey|r is what you would type into a custom price box."], TSMAPI.Design:GetInlineColor("link"))
+	TSM:Printf(
+	L["Below are your currently available price sources. The %skey|r is what you would type into a custom price box."],
+		TSMAPI.Design:GetInlineColor("link"))
 	local lines = {}
 	for key, label in pairs(TSMAPI:GetPriceSources()) do
 		tinsert(lines, { key = key, label = label })
@@ -671,13 +750,17 @@ function TSM:TestPriceSource(price)
 	if price == "" then return TSM:Print(L["Usage: /tsm price <ItemLink> <Price String>"]) end
 	local func, err = TSMAPI:ParseCustomPrice(price)
 	if err then
-		TSM:Printf(L["%s is not a valid custom price and gave the following error: %s"], TSMAPI.Design:GetInlineColor("link") .. price .. "|r", err)
+		TSM:Printf(L["%s is not a valid custom price and gave the following error: %s"],
+			TSMAPI.Design:GetInlineColor("link") .. price .. "|r", err)
 	else
 		local itemString = TSMAPI:GetItemString(link)
-		if not itemString then return TSM:Printf(L["%s is a valid custom price but %s is an invalid item."], TSMAPI.Design:GetInlineColor("link") .. price .. "|r", link) end
+		if not itemString then return TSM:Printf(L["%s is a valid custom price but %s is an invalid item."],
+				TSMAPI.Design:GetInlineColor("link") .. price .. "|r", link) end
 		local value = func(itemString)
-		if not value then return TSM:Printf(L["%s is a valid custom price but did not give a value for %s."], TSMAPI.Design:GetInlineColor("link") .. price .. "|r", link) end
-		TSM:Printf(L["A custom price of %s for %s evaluates to %s."], TSMAPI.Design:GetInlineColor("link") .. price .. "|r", link, TSMAPI:FormatTextMoney(value))
+		if not value then return TSM:Printf(L["%s is a valid custom price but did not give a value for %s."],
+				TSMAPI.Design:GetInlineColor("link") .. price .. "|r", link) end
+		TSM:Printf(L["A custom price of %s for %s evaluates to %s."],
+			TSMAPI.Design:GetInlineColor("link") .. price .. "|r", link, TSMAPI:FormatTextMoney(value))
 	end
 end
 
