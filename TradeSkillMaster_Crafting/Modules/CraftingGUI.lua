@@ -17,6 +17,40 @@ local private = {}
 private.gather = {}
 private.shown = {}
 
+-- enchants have no item link of their own, so link the scroll they make instead
+local function HandleEnchantScrollClick(index)
+	if not index or not IsModifiedClick("CHATLINK") then return end
+
+	local itemLink = GetTradeSkillItemLink(index)
+	if not itemLink or not strfind(itemLink, "enchant:") then return end
+
+	local spellID = TSM.Util:GetSpellID(index)
+	if not spellID then return end
+
+	local craft = TSM.db.factionrealm.crafts and TSM.db.factionrealm.crafts[spellID]
+	local itemString = craft and craft.itemID
+	if not itemString then
+		local itemID = TSM.enchantingItemIDs[spellID]
+		itemString = itemID and ("item:" .. itemID .. ":0:0:0:0:0:0")
+	end
+	if not itemString then return end
+
+	local name, link = TSMAPI:GetSafeItemInfo(itemString)
+	if not name or not link then return end
+
+	-- keep the search bar below from answering before Shopping gets the click
+	private.scrollClickInFlight = true
+	local handled = HandleModifiedItemClick(link)
+	private.scrollClickInFlight = nil
+	if handled then return true end
+
+	local editBox = GetCurrentKeyBoardFocus()
+	if editBox and not editBox:IsMultiLine() then
+		editBox:SetText(name)
+		return true
+	end
+end
+
 local function GetProfessionInfo(id)
 	-- store primary profession names
 	local primary = {}
@@ -1091,7 +1125,7 @@ function GUI:CreateProfessionsTab(parent)
 	local function InsertLink(link)
 		local putIntoChat, v1, v2, v3 = GUI.hooks.ChatEdit_InsertLink(link)
 		local hoverButton = GetMouseFocus()
-		if not putIntoChat and frame:IsVisible() and not (hoverButton and hoverButton:GetName() and strfind(hoverButton:GetName(), "MerchantItem([0-9]+)ItemButton")) then
+		if not putIntoChat and not private.scrollClickInFlight and frame:IsVisible() and not (hoverButton and hoverButton:GetName() and strfind(hoverButton:GetName(), "MerchantItem([0-9]+)ItemButton")) then
 			local name = TSMAPI:GetSafeItemInfo(link)
 			if name then
 				frame.searchBar:SetText(name)
@@ -1172,7 +1206,9 @@ function GUI:CreateProfessionsTab(parent)
 			GUI:UpdateProfessionsTabST()
 		elseif button == "LeftButton" then
 			if IsModifiedClick() then
-				HandleModifiedItemClick(GetTradeSkillRecipeLink(data.index))
+				if not HandleEnchantScrollClick(data.index) then
+					HandleModifiedItemClick(GetTradeSkillRecipeLink(data.index))
+				end
 			else
 				TradeSkillFrame_SetSelection(data.index)
 				TradeSkillFrame_Update()
@@ -1231,7 +1267,9 @@ function GUI:CreateCraftInfoFrame(parent)
 
 	local function OnClick()
 		if not frame.index then return end
-		HandleModifiedItemClick(GetTradeSkillItemLink(frame.index))
+		if not HandleEnchantScrollClick(frame.index) then
+			HandleModifiedItemClick(GetTradeSkillItemLink(frame.index))
+		end
 	end
 
 	local function OnEnter(self)
