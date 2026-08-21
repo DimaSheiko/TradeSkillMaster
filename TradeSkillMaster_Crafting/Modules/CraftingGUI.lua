@@ -2868,17 +2868,12 @@ function CheapestVellum(itemPassed)
 			velName = MatName
 		end
 		if (velName ~= nil) and (not strfind(velName, "III")) then
-			local VellumReplacePrice = TSM.Cost:GetMatCost(itemPassed) or 0
-			if strfind(velName, "Weapon Vellum") then
-				if VellumReplacePrice > (TSM.Cost:GetMatCost("item:43146:0:0:0:0:0:0") or 0) then
-					itemPassed =
-					"item:43146:0:0:0:0:0:0"
-				end
-			else
-				if VellumReplacePrice > (TSM.Cost:GetMatCost("item:43145:0:0:0:0:0:0") or 0) then
-					itemPassed =
-					"item:43145:0:0:0:0:0:0"
-				end
+			local VellumReplacePrice = TSM.Cost:GetMatCost(itemPassed)
+			local VellumIII = strfind(velName, "Weapon Vellum") and "item:43146:0:0:0:0:0:0" or "item:43145:0:0:0:0:0:0"
+			local VellumIIIPrice = TSM.Cost:GetMatCost(VellumIII)
+			-- a vellum with no price isn't free, so fall back to III when that one has one
+			if VellumIIIPrice and (not VellumReplacePrice or VellumReplacePrice == 0 or VellumReplacePrice > VellumIIIPrice) then
+				itemPassed = VellumIII
 			end
 		end
 	end
