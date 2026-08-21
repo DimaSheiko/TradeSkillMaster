@@ -40,7 +40,8 @@ local function GetCommonQueryInfo(name, items)
 		local itemQuery = TSMAPI:GetAuctionQueryInfo(itemString)
 		local existingQuery
 		for _, query in ipairs(queries) do
-			if query.class == itemQuery.class then
+			-- the AH matches quality exactly, so items of another rarity need their own query
+			if query.class == itemQuery.class and query.quality == itemQuery.quality then
 				existingQuery = query
 				break
 			end
@@ -48,7 +49,6 @@ local function GetCommonQueryInfo(name, items)
 		if existingQuery then
 			existingQuery.minLevel = min(existingQuery.minLevel, itemQuery.minLevel)
 			existingQuery.maxLevel = max(existingQuery.maxLevel, itemQuery.maxLevel)
-			existingQuery.quality = min(existingQuery.quality, itemQuery.quality)
 			if existingQuery.subClass ~= itemQuery.subClass then
 				existingQuery.subClass = nil
 			end
@@ -70,7 +70,6 @@ local function GetCommonQueryInfoClass(class, items)
 		local itemQuery = TSMAPI:GetAuctionQueryInfo(items[i])
 		resultQuery.minLevel = min(resultQuery.minLevel, itemQuery.minLevel)
 		resultQuery.maxLevel = max(resultQuery.maxLevel, itemQuery.maxLevel)
-		resultQuery.quality = min(resultQuery.quality, itemQuery.quality)
 		if resultQuery.subClass ~= itemQuery.subClass then resultQuery.subClass = nil end
 	end
 	resultQuery.items = items
@@ -116,7 +115,7 @@ local function NumPagesCallback(event, numPages)
 			-- This is a common class term so determine if we should use this or not.
 			local cost = 0
 			for _, query in ipairs(private.queries) do
-				if query.score and query.class == private.combinedQueries[1].class then
+				if query.score and query.class == private.combinedQueries[1].class and query.quality == private.combinedQueries[1].quality then
 					cost = cost + query.score
 				end
 			end
@@ -124,7 +123,7 @@ local function NumPagesCallback(event, numPages)
 				-- use the common class term
 				for i=#private.queries, 1, -1 do
 					local query = private.queries[i]
-					local shouldRemove = (query.class == private.combinedQueries[1].class)
+					local shouldRemove = (query.class == private.combinedQueries[1].class and query.quality == private.combinedQueries[1].quality)
 					if shouldRemove then
 						tremove(private.queries, i)
 					end
@@ -263,9 +262,11 @@ local function GenerateQueriesThread(self)
 	local classes = {GetAuctionItemClasses()}
 	for _, itemString in ipairs(private.itemList) do
 		local classIndex = GetItemClasses(itemString)
-		if classIndex then
-			itemClasses[classIndex] = itemClasses[classIndex] or {}
-			tinsert(itemClasses[classIndex], itemString)
+		local quality = select(3, TSMAPI:GetSafeItemInfo(itemString))
+		if classIndex and quality then
+			local key = classIndex .. "~" .. quality
+			itemClasses[key] = itemClasses[key] or { class = classIndex, items = {} }
+			tinsert(itemClasses[key].items, itemString)
 		end
 	end
 	
@@ -280,8 +281,8 @@ local function GenerateQueriesThread(self)
 			end
 		end
 	end
-	for class, items in pairs(itemClasses) do
-		for _, query in ipairs(GetCommonQueryInfoClass(class, items)) do
+	for _, bucket in pairs(itemClasses) do
+		for _, query in ipairs(GetCommonQueryInfoClass(bucket.class, bucket.items)) do
 			if #query.items > 1 then
 				tinsert(combinedQueries, query)
 			end
