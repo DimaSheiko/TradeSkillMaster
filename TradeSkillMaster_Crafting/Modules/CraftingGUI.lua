@@ -818,10 +818,7 @@ function GUI:CreateQueueFrame(parent)
 	local function MatOnClick(_, data)
 		if IsModifiedClick() then
 			local link = select(2, TSMAPI:GetSafeItemInfo(data.itemString))
-			-- with the AH open the click belongs to the auction search, not the bar below
-			private.bypassSearchBar = AuctionFrame and AuctionFrame:IsVisible()
 			HandleModifiedItemClick(link or data.itemString)
-			private.bypassSearchBar = nil
 		end
 	end
 
@@ -1111,7 +1108,9 @@ function GUI:CreateProfessionsTab(parent)
 	local function InsertLink(link)
 		local putIntoChat, v1, v2, v3 = GUI.hooks.ChatEdit_InsertLink(link)
 		local hoverButton = GetMouseFocus()
-		if not putIntoChat and not private.bypassSearchBar and frame:IsVisible() and not (hoverButton and hoverButton:GetName() and strfind(hoverButton:GetName(), "MerchantItem([0-9]+)ItemButton")) then
+		-- with the AH open the click belongs to the auction search, not the bar below
+		local ahIsOpen = AuctionFrame and AuctionFrame:IsVisible()
+		if not putIntoChat and not private.bypassSearchBar and not ahIsOpen and frame:IsVisible() and not (hoverButton and hoverButton:GetName() and strfind(hoverButton:GetName(), "MerchantItem([0-9]+)ItemButton")) then
 			local name = TSMAPI:GetSafeItemInfo(link)
 			if name then
 				frame.searchBar:SetText(name)
