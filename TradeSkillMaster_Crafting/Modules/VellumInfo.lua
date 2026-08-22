@@ -261,3 +261,16 @@ TSM.VellumInfo = {
 [64441] = 	39349,
 [64579] = 	39349,
 [71692] = 	38682}
+
+-- vellum upgrade chains, ordered from lowest to highest tier
+-- an enchant can always be written onto a vellum of its own tier or higher
+local ARMOR_VELLUMS = { "item:38682:0:0:0:0:0:0", "item:37602:0:0:0:0:0:0", "item:43145:0:0:0:0:0:0" }
+local WEAPON_VELLUMS = { "item:39349:0:0:0:0:0:0", "item:39350:0:0:0:0:0:0", "item:43146:0:0:0:0:0:0" }
+
+-- index = itemString of a vellum, value = its chain and position within it
+TSM.vellumTier = {}
+for _, chain in ipairs({ ARMOR_VELLUMS, WEAPON_VELLUMS }) do
+	for tier, itemString in ipairs(chain) do
+		TSM.vellumTier[itemString] = { chain = chain, tier = tier }
+	end
+end

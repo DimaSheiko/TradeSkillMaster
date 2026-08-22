@@ -237,30 +237,13 @@ function TSM:GetTooltip(itemString)
 					for matItemString, matQuantity in pairs(TSM.db.factionrealm.crafts[spellID].mats) do
 						local name, _, quality = TSMAPI:GetSafeItemInfo(matItemString)
 						if name then
+							-- swap in the vellum we actually price the craft with
+							local cheapestVellum = CheapestVellum(matItemString)
+							if cheapestVellum ~= matItemString then
+								matItemString = cheapestVellum
+								name = TSMAPI:GetSafeItemInfo(matItemString) or name
+							end
 							local mat = TSM.db.factionrealm.mats[matItemString]
-							
-							
-							
-							-- Get Cheapest vellum, lower vellum types can be replaced by III
-							local velName
-							if strfind(name, "Vellum") then
-								velName = name
-							end
-							if (velName ~= nil) and (not strfind(velName, "III")) then					
-								local VellumReplacePrice = TSM.Cost:GetMatCost(matItemString)
-
-								if strfind(velName, "Weapon Vellum") then						
-									if VellumReplacePrice > TSM.Cost:GetMatCost("item:43146:0:0:0:0:0:0") then 
-										matItemString = "item:43146:0:0:0:0:0:0"
-										name = TSMAPI:GetSafeItemInfo(matItemString)
-									end
-								else
-									if VellumReplacePrice > TSM.Cost:GetMatCost("item:43145:0:0:0:0:0:0") then 
-										matItemString = "item:43145:0:0:0:0:0:0"
-										name = TSMAPI:GetSafeItemInfo(matItemString)						
-									end
-								end
-							end
 							
 							
 				

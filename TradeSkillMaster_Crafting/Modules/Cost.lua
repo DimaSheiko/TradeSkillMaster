@@ -70,14 +70,7 @@ function Cost:GetCraftCost(itemID)
 			costIsValid = false
 		end
 		for matID, matQuantity in pairs(craft.mats) do
-		
-			local MatName = GetItemInfo(matID)
-			if MatName ~= nil and strfind(MatName, "Vellum") then			
-				local NewItemString = CheapestVellum(matID)
-				if matID ~= NewItemString then
-					matID = NewItemString
-				end
-			end
+			matID = CheapestVellum(matID)
 			local matCost = Cost:GetMatCost(matID)
 			if not matCost or matCost == 0 then
 				costIsValid = false

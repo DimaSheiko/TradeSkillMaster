@@ -730,27 +730,10 @@ function GUI:CreateQueueFrame(parent)
 			local name = TSMAPI:GetSafeItemInfo(itemID) or
 				(TSM.db.factionrealm.mats[itemID] and TSM.db.factionrealm.mats[itemID].name) or "?"
 
-			local itemIDx = itemID
-
-			-- Get Cheapest vellum, lower vellum types can be replaced by III
-			local velName
-			if strfind(name, "Vellum") then
-				velName = name
-			end
-			if (velName ~= nil) and (not strfind(velName, "III")) then
-				local VellumReplacePrice = TSM.Cost:GetMatCost(itemIDx)
-
-				if strfind(velName, "Weapon Vellum") then
-					if VellumReplacePrice > TSM.Cost:GetMatCost("item:43146:0:0:0:0:0:0") then
-						itemIDx = "item:43146:0:0:0:0:0:0"
-						name = TSMAPI:GetSafeItemInfo(itemIDx)
-					end
-				else
-					if VellumReplacePrice > TSM.Cost:GetMatCost("item:43145:0:0:0:0:0:0") then
-						itemIDx = "item:43145:0:0:0:0:0:0"
-						name = TSMAPI:GetSafeItemInfo(itemIDx)
-					end
-				end
+			-- show the vellum we actually price the craft with
+			local itemIDx = CheapestVellum(itemID)
+			if itemIDx ~= itemID then
+				name = TSMAPI:GetSafeItemInfo(itemIDx) or name
 			end
 
 			local inventory = TSM.Inventory:GetPlayerBagNum(itemIDx)
@@ -1898,13 +1881,11 @@ function GUI:UpdateQueue()
 						end
 
 						for itemID, quantity in pairs(TSM.db.factionrealm.crafts[spellID].mats) do
-							local MatName = GetItemInfo(itemID)
-							if MatName ~= nil and velName ~= nil and strfind(MatName, "Vellum") then
-								local NewItemString = CheapestVellum(itemID)
-								if itemID ~= NewItemString then
-									itemID = NewItemString
-									velName = GetItemInfo(itemID)
-								end
+							-- craft onto the same vellum the craft is priced with
+							local cheapestVellum = CheapestVellum(itemID)
+							if cheapestVellum ~= itemID then
+								itemID = cheapestVellum
+								velName = GetItemInfo(itemID) or velName
 							end
 
 							local numHave = bagTotals[itemID] or 0
@@ -2009,13 +1990,7 @@ function GUI:UpdateQueue()
 	local totalMats = {}
 	for _, data in pairs(queuedMats) do
 		for itemString, quantity in pairs(data) do
-			local MatName = GetItemInfo(itemString)
-			if MatName ~= nil and strfind(MatName, "Vellum") then
-				local NewItemString = CheapestVellum(itemString)
-				if itemString ~= NewItemString then
-					itemString = NewItemString
-				end
-			end
+			itemString = CheapestVellum(itemString)
 			totalMats[itemString] = (totalMats[itemString] or 0) + quantity
 		end
 	end
@@ -2858,24 +2833,25 @@ function GUI:GetStatus()
 	}
 end
 
+-- returns the cheapest vellum that can still hold the enchant, or the item itself
+-- when it isn't a vellum. Works off item IDs so it doesn't depend on the client
+-- locale or on GetItemInfo having the item cached.
 function CheapestVellum(itemPassed)
-	-- Get Cheapest vellum, lower vellum types can be replaced by III
-	local MatName = GetItemInfo(itemPassed)
-	-- MatName is sometimes nil ???
-	if MatName ~= nil then
-		local velName
-		if strfind(MatName, "Vellum") then
-			velName = MatName
-		end
-		if (velName ~= nil) and (not strfind(velName, "III")) then
-			local VellumReplacePrice = TSM.Cost:GetMatCost(itemPassed)
-			local VellumIII = strfind(velName, "Weapon Vellum") and "item:43146:0:0:0:0:0:0" or "item:43145:0:0:0:0:0:0"
-			local VellumIIIPrice = TSM.Cost:GetMatCost(VellumIII)
-			-- a vellum with no price isn't free, so fall back to III when that one has one
-			if VellumIIIPrice and (not VellumReplacePrice or VellumReplacePrice == 0 or VellumReplacePrice > VellumIIIPrice) then
-				itemPassed = VellumIII
-			end
+	local info = TSM.vellumTier[itemPassed]
+	if not info then return itemPassed end
+
+	local cheapest, cheapestPrice = itemPassed, TSM.Cost:GetMatCost(itemPassed)
+	-- a vellum with no price isn't free, so treat it as "no price at all"
+	if cheapestPrice == 0 then cheapestPrice = nil end
+
+	-- only look upwards, a lower tier vellum can't hold the enchant
+	for tier = info.tier + 1, #info.chain do
+		local candidate = info.chain[tier]
+		local price = TSM.Cost:GetMatCost(candidate)
+		if price and price > 0 and (not cheapestPrice or price < cheapestPrice) then
+			cheapest, cheapestPrice = candidate, price
 		end
 	end
-	return itemPassed
+
+	return cheapest
 end
