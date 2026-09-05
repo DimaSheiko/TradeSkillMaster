@@ -54,9 +54,16 @@ local function GetCommonQueryInfo(name, items)
 			end
 			tinsert(existingQuery.items, itemString)
 		else
-			itemQuery.name = name
 			itemQuery.items = {itemString}
 			tinsert(queries, itemQuery)
+		end
+	end
+	-- Only a group with several items gains anything from the shared search term.
+	-- A group left with a single item keeps that item's exact name; searching the
+	-- shared prefix for it would walk every auction matching the prefix.
+	for _, query in ipairs(queries) do
+		if #query.items > 1 then
+			query.name = name
 		end
 	end
 	return queries
