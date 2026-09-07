@@ -319,11 +319,13 @@ function Cancel:ShouldCancel(index, operation)
 			return cancelData, "reset"
 		end
 		return false, "belowMinPrice"
-	elseif lowestBuyout < prices.minPrice then
-		-- lowest buyout is below min price, so do nothing
+	elseif lowestBuyout < prices.minPrice or (not isPlayer and lowestBuyout == prices.minPrice) then
+		-- lowest buyout is below min price, or somebody else is sitting exactly at our min price
+		-- (we can't undercut them without going below it, and the post scan treats this as
+		-- below min price too), so do nothing
 		return false, "belowMinPrice"
 	else
-		-- lowest buyout is above the min price
+		-- lowest buyout is above the min price (or it's our own auction sitting at the min price)
 		if operation.cancelUndercut and (buyoutPerItem - prices.undercut) > (TSM.Scan:GetPlayerLowestBuyout(auctionItem, operation) or math.huge) then
 			-- this is not our lowest auction
 			return cancelData, "notLowest"
