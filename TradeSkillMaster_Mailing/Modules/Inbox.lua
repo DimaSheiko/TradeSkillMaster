@@ -17,6 +17,11 @@ function Inbox:OnEnable()
 	Inbox:RegisterEvent("MAIL_SHOW")
 	TSMAPI:CreateEventBucket("MAIL_INBOX_UPDATE", private.InboxUpdate, 0.3)
 	Inbox:RegisterEvent("MAIL_CLOSED")
+	-- Blizzard requests more mail after every looted mail, which refills the inbox mid-loot and stalls auto looting
+	Inbox:RawHook("InboxGetMoreMail", function(...)
+		if private.frame and not private.frame.buttonsEnabled then return end
+		return Inbox.hooks.InboxGetMoreMail(...)
+	end, true)
 end
 
 function Inbox:CreateTab(parent)
@@ -247,6 +252,10 @@ function private:UpdateTopLabel()
 end
 
 function private:InboxUpdate()
+	-- A growing inbox means a fresh list arrived, which restarts the 60s CheckInbox() cooldown
+	local shownMail = GetInboxNumItems()
+	if shownMail > (private.lastNumMail or 0) then private.listTime = GetTime() end
+	private.lastNumMail = shownMail
 	if not private.frame or not private.frame:IsVisible() then return end
 	TSMAPI:CancelFrame("inboxLootTextDelay")
 
@@ -317,23 +326,19 @@ function private:InboxUpdate()
 
 	private:UpdateTopLabel()
 
-	-- Yay nothing else to loot, so nothing else to update the cache for!
-	if private.cacheFrame.endTime and numMail == totalMail and private.lastTotal ~= totalMail then
-		private.cacheFrame.endTime = nil
-		private.cacheFrame:Hide()
-		-- Start a timer since we're over the limit of 50 items before waiting for it to recache
-	elseif (private.cacheFrame.endTime and numMail >= 50 and private.lastTotal ~= totalMail) or (numMail >= 50 and private.allowTimerStart) then
-		private.resetIndex = nil
-		private.allowTimerStart = nil
-		private.waitingForData = nil
-		private.lastTotal = totalMail
-		private.cacheFrame.endTime = GetTime() + 60
-		private.cacheFrame:Show()
-	end
-
 	-- The last item we setup to auto loot is finished, time for the next one
 	if not private.frame.buttonsEnabled then
-		if private.autoLootTotal ~= numMail then
+		if private.requested and numMail .. ":" .. totalMail == private.lastRequest and not private.retried then
+			-- CheckInbox() can be rejected for 60s after the last request, so retry once after that
+			private.retried = true
+			local delay = private.listTime and max(1, private.listTime + 61 - GetTime()) or 61
+			TSMAPI:CreateTimeDelay("mailRetryDelay", delay, function()
+				private.lastRequest = nil
+				private:RequestMoreMail()
+			end)
+		elseif private.autoLootTotal ~= numMail or private.requested then
+			if private.requested and numMail .. ":" .. totalMail ~= private.lastRequest then private.retried = nil end
+			private.requested = nil
 			private.autoLootTotal = GetInboxNumItems()
 
 			-- If we're auto checking mail when new data is available, will wait and continue auto looting, otherwise we just stop now
@@ -426,6 +431,9 @@ function private:StartAutoLooting(mode)
 
 	Inbox:RegisterEvent("UI_ERROR_MESSAGE")
 	private.frame:DisableButtons()
+	private.lastRequest = nil
+	private.requested = nil
+	private.retried = nil
 	private.moneyCollected = 0
 	private.mode = mode
 	private.lootIndex = 1
@@ -436,9 +444,14 @@ function private:AutoLoot()
 	TSMAPI:CancelFrame("mailSkipDelay")
 
 	-- Already looted everything after the invalid indexes we had, so fail it
-	if private.lootIndex > 1 and private.lootIndex > GetInboxNumItems() then
+	if private.lootIndex > GetInboxNumItems() then
 		if private.resetIndex then
-			private:StopAutoLooting()
+			if private:RequestMoreMail() then
+				private.lootIndex = 1
+				private.resetIndex = nil
+			else
+				private:StopAutoLooting()
+			end
 		else
 			private.resetIndex = true
 			private.lootIndex = 1
@@ -481,6 +494,18 @@ function private:AutoLoot()
 	elseif GetInboxNumItems() >= private.lootIndex then
 		private.lootIndex = private.lootIndex + 1
 		private:AutoLoot()
+	end
+end
+
+-- Fetch the next batch once per emptied inbox instead of polling
+function private:RequestMoreMail()
+	local numMail, totalMail = GetInboxNumItems()
+	local state = numMail .. ":" .. totalMail
+	if TSM.db.global.autoCheck and totalMail > numMail and private.lastRequest ~= state then
+		private.lastRequest = state
+		private.requested = true
+		CheckInbox()
+		return true
 	end
 end
 
@@ -652,6 +677,7 @@ function private:StopAutoLooting(failed)
 	private.mode = nil
 	private.resetIndex = nil
 	private.autoLootTotal = nil
+	TSMAPI:CancelFrame("mailRetryDelay")
 	if not private.frame then return end
 	private.frame:EnableButtons()
 
@@ -697,9 +723,9 @@ function Inbox:UI_ERROR_MESSAGE(event, msg)
 		local current, total = GetInboxNumItems()
 		if private.lootIndex > current then
 			if private.lootIndex > total and total <= 50 then
-				private:StopAutoLooting(true)
+				return private:StopAutoLooting(true)
 			end
-			return
+			return private:AutoLoot()
 		end
 
 		TSMAPI:CreateTimeDelay("mailWaitDelay", 0.3, private.AutoLoot)
@@ -710,6 +736,8 @@ function Inbox:MAIL_CLOSED()
 	private.resetIndex = nil
 	private.allowTimerStart = true
 	private.waitingForData = nil
+	private.lastRequest = nil
+	private.lastNumMail = nil
 	private:StopAutoLooting()
 	TSMAPI:CancelFrame("inboxLootTextDelay")
 	TSMAPI:CancelFrame("mailSkipDelay")
