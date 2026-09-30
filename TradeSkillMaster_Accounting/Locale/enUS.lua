@@ -59,10 +59,13 @@ L["If checked, the number of cancelled auctions since the last sale will show as
 L["If checked, the number of expired auctions since the last sale will show as up as failed auctions in an item's tooltip. if no sales then the total number of expired auctions will be shown."] = true
 L["If checked, the number you have purchased and the average purchase price will show up in an item's tooltip."] = true
 L["If checked, the number you have sold and the average sale price will show up in an item's tooltip."] = true
+L["If checked, the other sale rate (with or without cancelled auctions) will be shown in parentheses next to the main one."] = true
+L["If checked, the sale rate will be calculated as total sold / (total sold + total expired). Cancelling to repost after being undercut will no longer lower it."] = true
 L["If checked, the sale rate will be shown in item tooltips. sale rate is calculated as total sold / (total sold + total expired + total cancelled)."] = true
 L["If checked, whenever you buy or sell any quantity of a single item via trade, Accounting will display a popup asking if you want it to record that transaction."] = true
 L["If checked, you won't get a popup confirmation about whether or not to track trades."] = true
 L["If checked, Money Transfers will be included in income / expense and summary. Accounting will still track these if disabled but will not show them."] = true
+L["Ignore Cancelled Auctions in Sale Rate"] = true
 L["Income"] = true
 L["Item Name"] = true
 L["Items"] = true
@@ -113,6 +116,7 @@ L["Select how you would like prices to be shown in the \"Items\" and \"Resale\" 
 L["Select what format Accounting should use to display times in applicable screens."] = true
 L["Select where you want Accounting to get market value info from to show in applicable screens."] = true
 L["Shift-Right-Click to delete this record."] = true
+L["Show Both Sale Rates in item tooltips"] = true
 L["Show Cancelled Auctions as Failed Auctions since Last Sale in item tooltips"] = true
 L["Show Expired Auctions as Failed Auctions since Last Sale in item tooltips"] = true
 L["Show Sale Rate in item tooltips"] = true
@@ -151,3 +155,5 @@ L["Yesterday"] = true
 L["You can use the options below to clear old data. It is recommened to occasionally clear your old data to keep Accounting running smoothly. Select the minimum number of days old to be removed in the dropdown, then click the button.\n\nNOTE: There is no confirmation."] = true
 L["_ Hr _ Min ago"] = true
 L["none"] = true
+L["with cancelled"] = true
+L["without cancelled"] = true

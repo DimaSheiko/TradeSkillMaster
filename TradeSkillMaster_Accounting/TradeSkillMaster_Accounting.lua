@@ -40,6 +40,8 @@ local savedDBDefaults = {
 		expiredAuctions = false,
 		cancelledAuctions = false,
 		saleRate = false,
+		saleRateIgnoreCancelled = false,
+		saleRateShowBoth = false,
 		trackTrades = true,
 		autoTrackTrades = false,
 		displayGreys = true,
@@ -168,7 +170,7 @@ function TSM:GetTooltip(itemString)
 		end
 	end
 
-	local cancelledNum, expiredNum, totalFailed = TSM:GetAuctionStats(itemString, (lastSold > 0 and lastSold))
+	local cancelledNum, expiredNum, totalFailed, allExpired = TSM:GetAuctionStats(itemString, (lastSold > 0 and lastSold))
 
 	if expiredNum > 0 and cancelledNum > 0 then
 		tinsert(text, { left = "  " .. L["Failed Since Last Sale (Expired/Cancelled):"], right = format("%s (%s/%s)", "|cffffffff" .. (expiredNum + cancelledNum) .. "|r", "|cffffffff" .. expiredNum .. "|r", "|cffffffff" .. cancelledNum .. "|r") })
@@ -178,9 +180,20 @@ function TSM:GetTooltip(itemString)
 		tinsert(text, { left = "  " .. L["Cancelled Since Last Sale:"], right = "|cffffffff" .. cancelledNum })
 	end
 
-	if totalSaleNum > 0 and totalFailed > 0 then
-		local saleRate = TSM:Round(totalSaleNum / (totalSaleNum + (totalFailed or 0)), 0.01)
-		tinsert(text, { left = "  " .. L["Sale Rate:"], right = "|cffffffff" .. saleRate })
+	if TSM.db.factionrealm.saleRate and totalSaleNum > 0 then
+		local withCancelled = totalFailed > 0 and TSM:Round(totalSaleNum / (totalSaleNum + totalFailed), 0.01)
+		local withoutCancelled = allExpired > 0 and TSM:Round(totalSaleNum / (totalSaleNum + allExpired), 0.01)
+		local saleRate, otherRate, otherLabel = withCancelled, withoutCancelled, L["without cancelled"]
+		if TSM.db.factionrealm.saleRateIgnoreCancelled then
+			saleRate, otherRate, otherLabel = withoutCancelled, withCancelled, L["with cancelled"]
+		end
+		if saleRate then
+			local right = "|cffffffff" .. saleRate
+			if TSM.db.factionrealm.saleRateShowBoth and otherRate then
+				right = right .. format(" (%s %s)", otherRate, otherLabel)
+			end
+			tinsert(text, { left = "  " .. L["Sale Rate:"], right = right })
+		end
 	end
 
 	if TSM.db.factionrealm.tooltip.purchase and TSM.items[itemString] and #TSM.items[itemString].buys > 0 then
@@ -360,28 +373,32 @@ function TSM:UpdateBaseItemLookup()
 end
 
 local function GetAuctionStats(itemString, minTime)
-	local cancel, expire, total = 0, 0, 0
+	local cancel, expire, total, allExpired = 0, 0, 0, 0
 	for _, record in ipairs(TSM.items[itemString].auctions) do
 		if record.key == "Cancel" and TSM.db.factionrealm.cancelledAuctions and record.time > minTime then
 			cancel = cancel + record.quantity
 		elseif record.key == "Expire" and TSM.db.factionrealm.expiredAuctions and record.time > minTime then
 			expire = expire + record.quantity
 		end
+		if record.key == "Expire" then
+			allExpired = allExpired + record.quantity
+		end
 		total = total + record.quantity
 	end
-	return cancel, expire, total
+	return cancel, expire, total, allExpired
 end
 
 function TSM:GetAuctionStats(itemString, minTime)
 	minTime = minTime or 0
 	if not itemString then return end
 	if not TSM.cache[itemString].totalFailed then
-		local cancel, expire, total = GetAuctionStats(itemString, minTime)
+		local cancel, expire, total, allExpired = GetAuctionStats(itemString, minTime)
 		TSM.cache[itemString].totalCancel = cancel
 		TSM.cache[itemString].totalExpire = expire
 		TSM.cache[itemString].totalFailed = total
+		TSM.cache[itemString].allExpired = allExpired
 	end
-	return TSM.cache[itemString].totalCancel, TSM.cache[itemString].totalExpire, TSM.cache[itemString].totalFailed
+	return TSM.cache[itemString].totalCancel, TSM.cache[itemString].totalExpire, TSM.cache[itemString].totalFailed, TSM.cache[itemString].allExpired
 end
 
 local function GetAverageSellPrice(itemString, noBaseItem)
